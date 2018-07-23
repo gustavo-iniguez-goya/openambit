@@ -53,6 +53,18 @@ static typename_lookup_entry_t sampleLapEventTypeNames[] = {
     { 0, "" }
 };
 
+typedef struct sample_cadence_source_name_s {
+    u_int8_t source_id;
+    QString XMLName;
+} sample_cadence_source_name_t;
+
+static typename_lookup_entry_t sampleCadenceSourceNames[] = {
+    { 0x01, "CadencePod" },
+    { 0x32, "PowerPod" },
+    { 0x40, "Wrist" },
+    { 0, "" }
+};
+
 static typename_lookup_entry_t sampleActivityNames[] = {
     { 0x01, "Not Specified Sport" },
     { 0x02, "Multisport" },
@@ -561,6 +573,32 @@ bool MovesCountXML::XMLWriter::writeLogSample(ambit_log_sample_t *sample, QList<
         xml.writeTextElement("UTC", dateTimeString(dateTime));
         xml.writeTextElement("SampleType", "gps-tiny");
         xml.writeEndElement();
+        break;
+    }
+    case ambit_log_sample_type_cadence_source:
+    {
+        QDateTime dateTime(QDate(sample->utc_time.year, sample->utc_time.month, sample->utc_time.day), QTime(sample->utc_time.hour, sample->utc_time.minute, 0).addMSecs(sample->utc_time.msec));
+        dateTime.setTimeSpec(Qt::UTC);
+
+        xml.writeStartElement("Sample");
+        xml.writeTextElement("Time", QString::number((double)sample->time/1000.0, 'g', 16));
+        xml.writeStartElement("Events");
+        xml.writeStartElement("Cadence");
+        xml.writeStartElement("Source");
+
+        for (name_lookup = &sampleCadenceSourceNames[0]; name_lookup->XMLName != ""; name_lookup++) {
+            if (name_lookup->id == sample->u.cadence_source.value) {
+                xml.writeCharacters(QString(name_lookup->XMLName));
+                break;
+            }
+        }
+        xml.writeEndElement();
+
+        xml.writeEndElement();
+        xml.writeEndElement();
+        xml.writeTextElement("UTC", dateTimeString(dateTime));
+        xml.writeEndElement();
+
         break;
     }
     case ambit_log_sample_type_time:

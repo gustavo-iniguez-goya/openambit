@@ -103,6 +103,8 @@ typedef struct sample_cadence_source_name_s {
 } sample_cadence_source_name_t;
 
 static sample_cadence_source_name_t sampleCadenceSourceNames[] = {
+    { 0x01, "CadencePod" },
+    { 0x32, "PowerPod" },
     { 0x40, "Wrist" },
     { 0, "" }
 };
