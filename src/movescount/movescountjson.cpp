@@ -850,23 +850,27 @@ bool MovesCountJSON::writePeriodicSample(ambit_log_sample_t *sample, QVariantMap
 
         switch(value->type) {
         case ambit_log_sample_periodic_type_latitude:
-            output.insert("Latitude", (double)value->u.latitude/10000000);
+            if (value->u.latitude != 0xffffffff && value->u.latitude <= 90 && value->u.latitude >= -90){
+                output.insert("Latitude", (double)value->u.latitude/10000000);
+            }
             break;
         case ambit_log_sample_periodic_type_longitude:
-            output.insert("Longitude", (double)value->u.longitude/10000000);
+            if (value->u.longitude != 0xffffffff && value->u.longitude <= 180 && value->u.longitude >= -180){
+                output.insert("Longitude", (double)value->u.longitude/10000000);
+            }
             break;
         case ambit_log_sample_periodic_type_distance:
-            if (value->u.distance != 0xffffffff) {
+            if (value->u.distance != 0xffffffff && value->u.distance != 0xb400000) {
                 output.insert("Distance", value->u.distance);
             }
             break;
         case ambit_log_sample_periodic_type_speed:
-            if (value->u.speed != 0xffff) {
+            if (value->u.speed != 0xffff && (value->u.speed/100) <= 556) {
                 output.insert("Speed", (double)value->u.speed/100.0);
             }
             break;
         case ambit_log_sample_periodic_type_hr:
-            if (value->u.hr != 0xff) {
+            if (value->u.hr != 0xff && value->u.hr < 300) {
                 output.insert("HeartRate", value->u.hr);
             }
             break;
@@ -895,7 +899,7 @@ bool MovesCountJSON::writePeriodicSample(ambit_log_sample_t *sample, QVariantMap
             output.insert("EVPE", value->u.evpe);
             break;
         case ambit_log_sample_periodic_type_altitude:
-            if (value->u.altitude >= -1000 && value->u.altitude <= 10000) {
+            if (value->u.altitude >= -1000 && value->u.altitude <= 15000) {
                 output.insert("Altitude", (double)value->u.altitude);
             }
             break;
@@ -903,7 +907,7 @@ bool MovesCountJSON::writePeriodicSample(ambit_log_sample_t *sample, QVariantMap
             output.insert("AbsPressure", (int)round((double)value->u.abspressure/10.0));
             break;
         case ambit_log_sample_periodic_type_energy:
-            if (value->u.energy) {
+            if (value->u.energy && value->u.energy <= 1000) {
                 output.insert("EnergyConsumption", (double)value->u.energy/10.0);
             }
             break;
@@ -918,12 +922,12 @@ bool MovesCountJSON::writePeriodicSample(ambit_log_sample_t *sample, QVariantMap
             }
             break;
         case ambit_log_sample_periodic_type_gpsaltitude:
-            if (value->u.gpsaltitude >= -1000 && value->u.gpsaltitude <= 10000) {
+            if (value->u.gpsaltitude >= -1000 && value->u.gpsaltitude <= 15000) {
                 output.insert("GPSAltitude", value->u.gpsaltitude);
             }
             break;
         case ambit_log_sample_periodic_type_gpsheading:
-            if (value->u.gpsheading != 0xffff) {
+            if (value->u.gpsheading != 0xffff && value->u.gpsheading >= 0 && value->u.gpsheading <= 360) {
                 output.insert("GPSHeading", (double)value->u.gpsheading/10000000);
             }
             break;
@@ -975,16 +979,18 @@ bool MovesCountJSON::writePeriodicSample(ambit_log_sample_t *sample, QVariantMap
             }
             break;
         case ambit_log_sample_periodic_type_verticalspeed:
-            output.insert("VerticalSpeed", (double)value->u.verticalspeed/100.0);
+            if (value->u.verticalspeed >= -59 && value->u.verticalspeed <= 59){
+                output.insert("VerticalSpeed", (double)value->u.verticalspeed/100.0);
+            }
             break;
         case ambit_log_sample_periodic_type_cadence:
-            if (value->u.cadence != 0xff) {
+            if (value->u.cadence != 0xff && value->u.cadence <= 1000) {
                 output.insert("Cadence", value->u.cadence);
             }
             break;
         case ambit_log_sample_periodic_type_bikepower:
-            if (value->u.bikepower != 0xffff) {
-                output.insert("Power", value->u.bikepower);
+            if (value->u.bikepower != 0xffff && value->u.bikepower <= 2000) {
+                output.insert("BikePower", value->u.bikepower);
             }
             break;
         case ambit_log_sample_periodic_type_swimingstrokecnt:
