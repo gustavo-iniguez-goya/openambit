@@ -517,7 +517,6 @@ int MovesCountJSON::generateLogData(LogEntry *logEntry, QByteArray &output)
     ambit_log_sample_t *sample;
     QDateTime prevMarksDateTime;
     QDateTime prevPeriodicSamplesDateTime;
-    QDateTime UTCStartTime;
 
     QDateTime localBaseTime(QDate(logEntry->logEntry->header.date_time.year,
                                   logEntry->logEntry->header.date_time.month,
