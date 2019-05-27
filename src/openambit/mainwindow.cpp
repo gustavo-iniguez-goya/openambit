@@ -27,6 +27,7 @@
 #include <QListWidgetItem>
 #include <QMessageBox>
 #include <QDesktopServices>
+#include <QFileDialog>
 
 #define APPKEY                 "HpF9f1qV5qrDJ1hY1QK1diThyPsX10Mh4JvCw9xVQSglJNLdcwr3540zFyLzIC3e"
 #define MOVESCOUNT_DEFAULT_URL "https://uiservices.movescount.com/"
@@ -420,9 +421,62 @@ void MainWindow::showContextMenuForLogItem(const QPoint &pos)
 {
     QMenu contextMenu(tr("Context menu"), this);
     QAction *action = new QAction(tr("Write Movescount file"), this);
+    QAction *actionGpx = new QAction(tr("Export to GPX"), this);
+    QAction *actionTcx = new QAction(tr("Export to TCX"), this);
     connect(action, SIGNAL(triggered()), this, SLOT(logItemWriteMovescount()));
+    connect(actionGpx, SIGNAL(triggered()), this, SLOT(logItemExportGPX()));
+    connect(actionTcx, SIGNAL(triggered()), this, SLOT(logItemExportTCX()));
+
     contextMenu.addAction(action);
+    contextMenu.addAction(actionGpx);
+    contextMenu.addAction(actionTcx);
     contextMenu.exec(mapToGlobal(pos));
+}
+
+void MainWindow::logItemExportTCX()
+{
+    LogEntry *logEntry = NULL;
+    logEntry = logStore.read(ui->logsList->selectedItems().at(0)->data(Qt::UserRole).toString());
+    if (logEntry != NULL) {
+        QString tcxFilename = QFileDialog::getSaveFileName(this,
+                tr("Select TCX name"),
+                "",
+                tr("TCX files (*.tcx)"));
+        if (tcxFilename != ""){
+            FormatTcx tcxFormat(logEntry);
+            tcxFormat.build();
+            if (tcxFormat.writeToFile(tcxFilename)){
+                trayIcon->showMessage(QCoreApplication::applicationName(), tr("File exported correctly"));
+            }
+            else{
+                trayIcon->showMessage(QCoreApplication::applicationName(), tr("Error exporting the file"));
+            }
+        }
+        delete logEntry;
+    }
+}
+
+void MainWindow::logItemExportGPX()
+{
+    LogEntry *logEntry = NULL;
+    logEntry = logStore.read(ui->logsList->selectedItems().at(0)->data(Qt::UserRole).toString());
+    if (logEntry != NULL) {
+        QString gpxFilename = QFileDialog::getSaveFileName(this,
+                tr("Select GPX name"),
+                "",
+                tr("GPX files (*.gpx)"));
+        if (gpxFilename != ""){
+            FormatGpx gpx(logEntry);
+            gpx.build();
+            if (gpx.writeToFile(gpxFilename)){
+                trayIcon->showMessage(QCoreApplication::applicationName(), tr("File exported correctly"));
+            }
+            else{
+                trayIcon->showMessage(QCoreApplication::applicationName(), tr("Error exporting the file"));
+            }
+        }
+        delete logEntry;
+    }
 }
 
 void MainWindow::logItemWriteMovescount()

@@ -25,6 +25,8 @@
 #include "devicemanager.h"
 #include "settingsdialog.h"
 #include "confirmbetadialog.h"
+#include "format_tcx.h"
+#include "format_gpx.h"
 #include <movescount/deviceinfo.h>
 #include <movescount/movescount.h>
 #include <QMainWindow>
@@ -82,6 +84,8 @@ private slots:
     void logItemSelected(QListWidgetItem *current,QListWidgetItem *previous);
     void showContextMenuForLogItem(const QPoint &pos);
     void logItemWriteMovescount();
+    void logItemExportGPX();
+    void logItemExportTCX();
     void updateLogList();
     
 private:
