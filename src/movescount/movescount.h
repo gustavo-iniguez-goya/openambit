@@ -68,6 +68,8 @@ public:
     void writePersonalSettings(ambit_personal_settings_t *settings);
     void writeLog(LogEntry *logEntry);
 
+    MovesCountLogChecker *logChecker;
+
 signals:
     void newerFirmwareExists(QByteArray fw_version);
     void movesCountAuth(bool authorized);
@@ -130,8 +132,6 @@ private:
     MovesCountJSON jsonParser;
 
     LogStore logStore;
-
-    MovesCountLogChecker *logChecker;
 
     QThread workerThread;
 };

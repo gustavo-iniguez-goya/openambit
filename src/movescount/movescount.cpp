@@ -302,9 +302,6 @@ void MovesCount::recheckAuthorization()
 
 void MovesCount::handleAuthorizationSignal(bool authorized)
 {
-    if (authorized) {
-        logChecker->run();
-    }
 }
 
 int MovesCount::getOrbitalDataInThread(u_int8_t **data)

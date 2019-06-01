@@ -398,6 +398,13 @@ void MainWindow::movesCountAuth(bool authorized)
 {
     ui->labelMovescountAuth->setHidden(authorized);
     ui->labelMovescountAuthIcon->setHidden(authorized);
+    settings.beginGroup("syncSettings");
+    bool syncServerMoves = settings.value("syncServerMoves", false).toBool();
+    settings.endGroup();
+    if (authorized && syncServerMoves){
+        qDebug() << "log checking";
+        movesCount->logChecker->run();
+    }
 }
 
 void MainWindow::logItemSelected(QListWidgetItem *current,QListWidgetItem *previous)
@@ -495,17 +502,19 @@ void MainWindow::movesCountSetup()
     bool syncOrbit = false;
     bool syncSportMode = false;
     bool syncNavigation = false;
+    bool syncServerMoves = false;
     bool movescountEnable = false;
 
     settings.beginGroup("syncSettings");
     syncOrbit = settings.value("syncOrbit", true).toBool();
     syncSportMode = settings.value("syncSportMode", false).toBool();
     syncNavigation = settings.value("syncNavigation", false).toBool();
+    syncServerMoves = settings.value("syncServerMoves", false).toBool();
     settings.endGroup();
 
     settings.beginGroup("movescountSettings");
     movescountEnable = settings.value("movescountEnable", false).toBool();
-    if (syncOrbit || syncSportMode || syncNavigation || movescountEnable) {
+    if (syncOrbit || syncSportMode || syncNavigation || syncServerMoves || movescountEnable) {
         if (movesCount == NULL) {
             movesCount = MovesCount::instance();
             movesCount->setAppkey(APPKEY);
