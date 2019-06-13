@@ -78,6 +78,7 @@ private slots:
 
     void newerFirmwareExists(QByteArray fw_version);
     void movesCountAuth(bool authorized);
+    void slotMovescountUploadProgress(qint64 bytesSent, qint64 bytesTotal);
 
     void logItemSelected(QListWidgetItem *current,QListWidgetItem *previous);
     void showContextMenuForLogItem(const QPoint &pos);

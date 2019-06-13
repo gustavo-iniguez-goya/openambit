@@ -400,6 +400,13 @@ void MainWindow::movesCountAuth(bool authorized)
     ui->labelMovescountAuthIcon->setHidden(authorized);
 }
 
+void MainWindow::slotMovescountUploadProgress(qint64 bytesSent, qint64 bytesTotal)
+{
+    if (bytesTotal > 0){
+        ui->statusBar->showMessage(QString(tr("Uploading move (%1%).")).arg((bytesSent * 100) / bytesTotal));
+    }
+}
+
 void MainWindow::logItemSelected(QListWidgetItem *current,QListWidgetItem *previous)
 {
     LogEntry *logEntry = NULL;
@@ -517,6 +524,7 @@ void MainWindow::movesCountSetup()
 
             connect(movesCount, SIGNAL(newerFirmwareExists(QByteArray)), this, SLOT(newerFirmwareExists(QByteArray)), Qt::QueuedConnection);
             connect(movesCount, SIGNAL(movesCountAuth(bool)), this, SLOT(movesCountAuth(bool)), Qt::QueuedConnection);
+            connect(movesCount, SIGNAL(moveUploadProgress(qint64, qint64)), this, SLOT(slotMovescountUploadProgress(qint64, qint64)));
         }
         if (movescountEnable) {
             movesCount->setUsername(settings.value("email").toString());

@@ -689,6 +689,9 @@ QNetworkReply *MovesCount::syncPOST(QString path, QString additionalHeaders, QBy
     reply = asyncPOST(path, additionalHeaders, postData, auth);
     QEventLoop loop;
     connect(reply, SIGNAL(finished()), &loop, SLOT(quit()));
+    connect(reply, &QNetworkReply::uploadProgress, [=](qint64 bytesSent, qint64 bytesTotal) {
+            moveUploadProgress(bytesSent, bytesTotal);
+            });
     loop.exec();
 
     return reply;
