@@ -75,6 +75,7 @@ signals:
     void movesCountAuth(bool authorized);
     void logMoveID(QString device, QDateTime time, QString moveID);
     void moveUploadProgress(qint64 bytesSent, qint64 bytesTotal);
+    void uploadError(int error, QByteArray data);
 
 private slots:
     void authCheckFinished();

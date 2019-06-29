@@ -44,12 +44,15 @@ public:
     explicit DeviceManager(QObject *parent = 0);
     ~DeviceManager();
     void start();
+    ambit_object_t *deviceObject;
 signals:
     void deviceDetected(const DeviceInfo& deviceInfo);
     void deviceRemoved(void);
     void deviceCharge(quint8 percent);
     void syncFinished(bool success);
     void syncProgressInform(QString message, bool error, bool newRow, quint8 percentDone);
+    void logEntryDownloaded(LogEntry *new_entry);
+    void personalSettingsDownloaded(ambit_personal_settings_t *personalSettings);
 public slots:
     void detect(void);
     void startSync(bool readAllLogs);
@@ -63,7 +66,6 @@ private:
     static void log_push_cb(void *ref, ambit_log_entry_t *log_entry);
     static void log_progress_cb(void *ref, uint16_t log_count, uint16_t log_current, uint8_t progress_percent);
 
-    ambit_object_t *deviceObject;
     UdevListener *udevListener;
 
     DeviceInfo currentDeviceInfo;

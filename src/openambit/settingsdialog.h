@@ -23,7 +23,13 @@
 #define SETTINGSDIALOG_H
 
 #include <QDialog>
+#include <QDebug>
+#include <QtNetwork>
+#include <QtNetworkAuth>
+#include <QDesktopServices>
+#include <QJsonDocument>
 #include "settings.h"
+#include "socialnetworks/socialnetworkstrava.h"
 
 class QListWidgetItem;
 
@@ -43,16 +49,30 @@ signals:
     void settingsSaved();
 
 public slots:
+    void cmdStravaAuthorized();
+    void cmdStravaRefresh();
+    void cmdStravaDisconnect();
+    void cmdStravaOptions();
+    void cmdStravaSettings();
+    void enableStravaSettings();
     void changePage(QListWidgetItem *current, QListWidgetItem *previous);
     void accept();
+    void update();
     void showHideUserSettings();
     
 private:
     void readSettings();
     void writeSettings();
 
+    void setupStrava();
+    void setStravaProfilePicture();
+    void setStravaConnected();
+    void setStravaDisconnected();
+    void setStravaAthleteInformation(QString athleteName);
+
     Ui::SettingsDialog *ui;
     Settings settings;
+    SocialNetworkStrava *strava;
 };
 
 #endif // SETTINGSDIALOG_H

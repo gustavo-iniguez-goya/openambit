@@ -120,6 +120,8 @@ void DeviceManager::startSync(bool readAllLogs = false)
         waypoint_sync_res = libambit_navigation_read(this->deviceObject, currentPersonalSettings);
         currentSyncPart++;
 
+        emit personalSettingsDownloaded(currentPersonalSettings);
+
         libambit_sync_display_show(this->deviceObject);
 
         if (syncTime && res != -1) {
@@ -254,6 +256,7 @@ void DeviceManager::log_push_cb(void *ref, ambit_log_entry_t *log_entry)
     DeviceManager *manager = static_cast<DeviceManager*> (ref);
     LogEntry *entry = manager->logStore.store(manager->currentDeviceInfo, manager->currentPersonalSettings, log_entry);
     if (entry != NULL) {
+        emit manager->logEntryDownloaded(entry);
         //! TODO: make this optional, only used for debugging
         manager->movesCountXML.writeLog(entry);
 
