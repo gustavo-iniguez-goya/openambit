@@ -581,16 +581,16 @@ void MovesCount::writeLogInThread(LogEntry *logEntry)
             emit logMoveID(logEntry->device, logEntry->time, moveId);
         } else {
             qDebug() << "Failed to upload log, movescount.com replied with \"" << reply->readAll() << "\"";
-            emit uploadError(data);
+            emit uploadError(0, data);
         }
     } 
     else if(reply->error() == QNetworkReply::ContentConflictError){
-        emit uploadError("Move already uploaded");
+        emit uploadError(0, "Move already uploaded");
     }
     else {
         data = reply->readAll();
         qDebug() << "Failed to upload log (err code:" << reply->error() << "), movescount.com replied with \"" << reply->readAll() << "\"";
-        emit uploadError(data);
+        emit uploadError(0, data);
     }
 }
 

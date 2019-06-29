@@ -14,6 +14,7 @@ find_package(libambit REQUIRED)
 find_package(Movescount REQUIRED)
 find_package(UDev REQUIRED)
 find_package(Qt5Network REQUIRED)
+find_package(Qt5NetworkAuth REQUIRED)
 find_package(Qt5Xml REQUIRED)
 
 include(GNUInstallDirs)
@@ -40,6 +41,8 @@ set(openambit_HDRS
   signalhandler.h
   single_application.h
   udevlistener.h
+  socialnetworks/socialnetworks.h
+  socialnetworks/socialnetworkstrava.h
   format_tcx.h
   format_gpx.h
 )
@@ -55,8 +58,10 @@ set(openambit_SRCS
   signalhandler.cpp
   single_application.cpp
   udevlistener.cpp
-  format_gpx.cpp
+  socialnetworks/socialnetworks.cpp
+  socialnetworks/socialnetworkstrava.cpp
   format_tcx.cpp
+  format_gpx.cpp
 )
 
 set(openambit_UIS
@@ -106,7 +111,9 @@ add_definitions(-DAPP_VERSION="${OPENAMBIT_VERSION}")
 
 add_executable(openambit ${openambit_HDRS} ${openambit_SRCS} ${UIS} ${RSCS})
 
-target_link_libraries(openambit ${LIBAMBIT_LIBS} ${MOVESCOUNT_LIBS} ${UDEV_LIBS} Qt5::Core Qt5::Widgets Qt5::Network Qt5::Xml)
+QT5_USE_MODULES(openambit Core Widgets Network NetworkAuth)
+
+target_link_libraries(openambit ${LIBAMBIT_LIBS} ${MOVESCOUNT_LIBS} ${UDEV_LIBS} Qt5::Xml)
 
 install(TARGETS openambit DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${OPENAMBIT_SOURCE_DIR}/deployment/openambit.desktop

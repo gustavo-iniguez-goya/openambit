@@ -25,6 +25,7 @@
 #include "devicemanager.h"
 #include "settingsdialog.h"
 #include "confirmbetadialog.h"
+#include "socialnetworks/socialnetworkstrava.h"
 #include "format_tcx.h"
 #include "format_gpx.h"
 #include <movescount/deviceinfo.h>
@@ -77,24 +78,34 @@ private slots:
     void deviceCharge(quint8 percent);
     void syncFinished(bool success);
     void syncProgressInform(QString message, bool error, bool newRow, quint8 percentDone);
+    void slotLogEntryDownloaded(LogEntry *new_entry);
+    void slotUpdatePersonalSettings(ambit_personal_settings_t *personalSettings);
+
 
     void newerFirmwareExists(QByteArray fw_version);
     void movesCountAuth(bool authorized);
-    void showUploadError(QByteArray data);
+    void showUploadError(int error, QByteArray data);
+    void slotMoveUploadProgress(qint64 bytesSent, qint64 bytesTotal);
+    void slotMoveUploaded(QDateTime dateTime);
 
     void logItemSelected(QListWidgetItem *current,QListWidgetItem *previous);
     void showContextMenuForLogItem(const QPoint &pos);
     void logItemWriteMovescount();
     void logItemExportGPX();
     void logItemExportTCX();
+    void logItemUploadStrava();
     void updateLogList();
     
 private:
     void startSync();
 
     void movesCountSetup();
+    void stravaSetup();
+    void socialNetworksSetup();
 
     bool sysTraySupported();
+
+    QString exportMoveToGpx(LogEntry *logEntry, QString outFile);
 
     Ui::MainWindow *ui;
     bool forceClose;
@@ -111,6 +122,7 @@ private:
     LogStore logStore;
     MovesCountXML movesCountXML;
     MovesCount *movesCount;
+    SocialNetworkStrava *strava=0;
     QThread deviceWorkerThread;
 
     class LogMessageRow : public QHBoxLayout

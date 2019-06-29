@@ -22,6 +22,9 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include <fstream>
+#include <iostream>
+#include <sstream>
 #include <QCloseEvent>
 #include <QDebug>
 #include <QListWidgetItem>
@@ -100,6 +103,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(deviceManager, SIGNAL(deviceCharge(quint8)), this, SLOT(deviceCharge(quint8)), Qt::QueuedConnection);
     connect(deviceManager, SIGNAL(syncFinished(bool)), this, SLOT(syncFinished(bool)), Qt::QueuedConnection);
     connect(deviceManager, SIGNAL(syncProgressInform(QString,bool,bool,quint8)), this, SLOT(syncProgressInform(QString,bool,bool,quint8)), Qt::QueuedConnection);
+    connect(deviceManager, SIGNAL(logEntryDownloaded(LogEntry*)), this, SLOT(slotLogEntryDownloaded(LogEntry*)) );
+    connect(deviceManager, SIGNAL(personalSettingsDownloaded(ambit_personal_settings_t *)), this, SLOT(slotUpdatePersonalSettings(ambit_personal_settings_t *)) );
     connect(ui->buttonDeviceReload, SIGNAL(clicked()), deviceManager, SLOT(detect()));
     connect(ui->buttonSyncNow, SIGNAL(clicked()), this, SLOT(syncNowClicked()));
     connect(this, SIGNAL(syncNow(bool)), deviceManager, SLOT(startSync(bool)));
@@ -116,6 +121,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
     // Setup Movescount
     movesCountSetup();
+
+    socialNetworksSetup();
 }
 
 MainWindow::~MainWindow()
@@ -123,6 +130,9 @@ MainWindow::~MainWindow()
     deviceWorkerThread.quit();
     deviceWorkerThread.wait();
     delete deviceManager;
+
+    settings.beginGroup("generalSettings");
+    settings.endGroup();
 
     if (movesCount != NULL) {
         movesCount->exit();
@@ -134,6 +144,36 @@ MainWindow::~MainWindow()
     delete trayIconMenu;
 
     delete ui;
+}
+
+void MainWindow::slotUpdatePersonalSettings(ambit_personal_settings_t *personalSettings)
+{
+    settings.beginGroup("athleteSettings");
+    settings.setValue("weight", personalSettings->weight);
+    settings.setValue("restHR", personalSettings->rest_hr);
+    settings.setValue("maxHR",  personalSettings->max_hr);
+    settings.setValue("fitnessLevel", personalSettings->fitness_level);
+    settings.setValue("isMale", personalSettings->is_male);
+    settings.endGroup();
+
+    settings.beginReadArray("socialNetworksSettings");
+    settings.setArrayIndex(STRAVA);
+    if (strava && strava->isEnabled()){
+        settings.endArray();
+        strava->updateAthleteData();
+    }
+    else{
+        settings.endArray();
+    }
+}
+
+void MainWindow::slotLogEntryDownloaded(LogEntry *logEntry)
+{
+    if (strava && strava->getUploadMoves()){
+        ui->statusBar->showMessage("Uploading move to Strava (" + logEntry->time.toUTC().toString("dd/MM, HH:mm:ss") + ")");
+        trayIcon->showMessage(QCoreApplication::applicationName(), tr(QString("Uploading move to Strava (%1), hold on").arg(logEntry->time.toUTC().toString("dd/MM, HH:mm:ss")).toLatin1()));
+        strava->uploadActivity(logEntry);
+    }
 }
 
 void MainWindow::singleApplicationMsgRecv(QString msg)
@@ -234,6 +274,7 @@ void MainWindow::showAbout()
 
 void MainWindow::settingsSaved()
 {
+    strava->reloadSettings();
     // Update Movescount
     movesCountSetup();
 }
@@ -281,6 +322,9 @@ void MainWindow::deviceDetected(const DeviceInfo& deviceInfo)
         ui->checkBoxResyncAll->setHidden(false);
         ui->buttonSyncNow->setHidden(false);
         trayIconSyncAction->setDisabled(false);
+
+        if (strava != NULL)
+            strava->requestToken(QVariantMap(), "refresh_token");
 
         movesCountSetup();
         if (movesCount != NULL) {
@@ -401,7 +445,7 @@ void MainWindow::movesCountAuth(bool authorized)
     ui->labelMovescountAuthIcon->setHidden(authorized);
 }
 
-void MainWindow::showUploadError(QByteArray data)
+void MainWindow::showUploadError(int error, QByteArray data)
 {
     QMessageBox::warning(nullptr, QObject::tr("Upload error"), data, QMessageBox::Ok);
 }
@@ -433,9 +477,26 @@ void MainWindow::showContextMenuForLogItem(const QPoint &pos)
     connect(actionTcx, SIGNAL(triggered()), this, SLOT(logItemExportTCX()));
 
     contextMenu.addAction(action);
+    if (strava->getAuthStatus() > SocialNetworkStrava::DISCONNECTED){
+        QAction *actionStrava = new QAction(tr("Upload to Strava"), this);
+        connect(actionStrava, SIGNAL(triggered()), this, SLOT(logItemUploadStrava()));
+        contextMenu.addAction(actionStrava);
+    }
     contextMenu.addAction(actionGpx);
     contextMenu.addAction(actionTcx);
     contextMenu.exec(mapToGlobal(pos));
+}
+
+void MainWindow::logItemUploadStrava()
+{
+    LogEntry *logEntry = NULL;
+    logEntry = logStore.read(ui->logsList->selectedItems().at(0)->data(Qt::UserRole).toString());
+    if (logEntry != NULL) {
+        ui->statusBar->showMessage("Uploading move to Strava (" + logEntry->time.toUTC().toString("dd/MM, HH:mm:ss") + ")");
+        trayIcon->showMessage(QCoreApplication::applicationName(), tr(QString("Uploading move to Strava (%1), hold on").arg(logEntry->time.toUTC().toString("dd/MM, HH:mm:ss")).toLatin1()));
+        strava->uploadActivity(logEntry);
+        delete logEntry;
+    }
 }
 
 void MainWindow::logItemExportTCX()
@@ -444,7 +505,7 @@ void MainWindow::logItemExportTCX()
     logEntry = logStore.read(ui->logsList->selectedItems().at(0)->data(Qt::UserRole).toString());
     if (logEntry != NULL) {
         QString tcxFilename = QFileDialog::getSaveFileName(this,
-                tr("Select TCX name"),
+                tr("Select TCX file"),
                 "",
                 tr("TCX files (*.tcx)"));
         if (tcxFilename != ""){
@@ -452,9 +513,11 @@ void MainWindow::logItemExportTCX()
             tcxFormat.build();
             if (tcxFormat.writeToFile(tcxFilename)){
                 trayIcon->showMessage(QCoreApplication::applicationName(), tr("File exported correctly"));
+                ui->statusBar->showMessage("Move exported to TCX.");
             }
             else{
                 trayIcon->showMessage(QCoreApplication::applicationName(), tr("Error exporting the file"));
+                ui->statusBar->showMessage("Error exporting to TCX.");
             }
         }
         delete logEntry;
@@ -467,17 +530,19 @@ void MainWindow::logItemExportGPX()
     logEntry = logStore.read(ui->logsList->selectedItems().at(0)->data(Qt::UserRole).toString());
     if (logEntry != NULL) {
         QString gpxFilename = QFileDialog::getSaveFileName(this,
-                tr("Select GPX name"),
+                tr("Select GPX file"),
                 "",
                 tr("GPX files (*.gpx)"));
         if (gpxFilename != ""){
             FormatGpx gpx(logEntry);
             gpx.build();
             if (gpx.writeToFile(gpxFilename)){
-                trayIcon->showMessage(QCoreApplication::applicationName(), tr("File exported correctly"));
+                trayIcon->showMessage(QCoreApplication::applicationName(), tr("Move exported correctly"));
+                ui->statusBar->showMessage("Move exported to GPX.");
             }
             else{
                 trayIcon->showMessage(QCoreApplication::applicationName(), tr("Error exporting the file"));
+                ui->statusBar->showMessage("Error exporting to GPX.");
             }
         }
         delete logEntry;
@@ -549,6 +614,50 @@ void MainWindow::startSync()
     emit MainWindow::syncNow(ui->checkBoxResyncAll->isChecked());
 }
 
+void MainWindow::socialNetworksSetup()
+{
+    SocialNetworks *sNets = SocialNetworks::instance(this);
+
+    settings.beginReadArray("socialNetworksSettings");
+
+    for (int i=0; i < NetworkType::TOTAL_NETS; ++i){
+        settings.setArrayIndex(i);
+        sNets->initialize(this, i);
+    }
+    settings.endArray();
+
+    strava = (SocialNetworkStrava*)SocialNetworks::instance(this)->getNetwork(STRAVA);
+    if (strava){
+        connect(strava, SIGNAL(moveUploaded(QDateTime)), this, SLOT(slotMoveUploaded(QDateTime)));
+        connect(strava, &SocialNetworkStrava::moveUploadProgress, this, &MainWindow::slotMoveUploadProgress);
+        connect(strava, &SocialNetworkStrava::error, this, [=](QString error){
+                showUploadError(0, error.toUtf8());
+                });
+    }
+
+}
+
+void MainWindow::slotMoveUploadProgress(qint64 bytesSent, qint64 bytesTotal)
+{
+    if (bytesTotal > 0){
+        ui->statusBar->showMessage(QString("Uploading move to Strava (%1%).").arg((bytesSent * 100) / bytesTotal));
+    }
+    //trayIcon->showMessage(QCoreApplication::applicationName(), tr("Move uploaded"));
+}
+
+void MainWindow::slotMoveUploaded(QDateTime dateTime)
+{
+    ui->statusBar->showMessage("Move uploaded.");
+    trayIcon->showMessage(QCoreApplication::applicationName(), tr("Move uploaded"));
+}
+
+// mainWin -> init SocialNetworks ->
+// init all known networks -> configure in constructor everything
+//
+void MainWindow::stravaSetup()
+{
+}
+
 void MainWindow::movesCountSetup()
 {
     bool syncOrbit = false;
@@ -576,7 +685,7 @@ void MainWindow::movesCountSetup()
 
             connect(movesCount, SIGNAL(newerFirmwareExists(QByteArray)), this, SLOT(newerFirmwareExists(QByteArray)), Qt::QueuedConnection);
             connect(movesCount, SIGNAL(movesCountAuth(bool)), this, SLOT(movesCountAuth(bool)), Qt::QueuedConnection);
-            connect(movesCount, SIGNAL(uploadError(QByteArray)), this, SLOT(showUploadError(QByteArray)));
+            connect(movesCount, SIGNAL(uploadError(int,QByteArray)), this, SLOT(showUploadError(int,QByteArray)));
         }
         if (movescountEnable) {
             movesCount->setUsername(settings.value("email").toString());
