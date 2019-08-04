@@ -583,6 +583,9 @@ void SocialNetworkStrava::checkUploadStatus(QDateTime dateTime)
             return;
         }
         else if(!json["error"].isUndefined() && !json["error"].isNull()){
+            emit error(json["status"].toString() + "\n" + json["error"].toString());
+            mUploadTimer->disconnect(SIGNAL(timeout()));
+            mUploadTimer->stop();
             return;
         }
         else if(!json["activity_id"].isUndefined() && json["activity_id"].isNull()){
