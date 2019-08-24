@@ -2,13 +2,21 @@ Changes from origin
 ===================
 
 Fixed uploading power meter data to movescount.
+
 Fixed activity start time, which caused wrong activity start time on Strava.
+
 Display a dialog when an activity fail to upload.
+
 Enforce field limits.
+
 Added Max and Avg power meter data. 
+
 Added new cadence sources from different pods.
+
 Added options to export to GPX and TCX.
+
 Display activity upload progress.
+
 Allow to upload activities to Strava directly.
 
 ----
