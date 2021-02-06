@@ -47,6 +47,8 @@ void FormatTcx::build()
     double lastLapDistance = 0;
     double lapDuration = 0;
     QDateTime lastLapTime;
+    QString startTime;
+    QString lastStartTime;
     
     QDomElement root = mDoc.createElement("TrainingCenterDatabase");
     root.setAttribute("xmlns:xsd", "http://www.w3.org/2001/XMLSchema");
@@ -104,7 +106,6 @@ void FormatTcx::build()
 
     while (index < mLogEntry->logEntry->samples_count) {
         sample = &mLogEntry->logEntry->samples[index];
-
         if (sample->type == ambit_log_sample_type_gps_tiny ||
             sample->type == ambit_log_sample_type_gps_base ||
             sample->type == ambit_log_sample_type_gps_small
@@ -144,19 +145,28 @@ void FormatTcx::build()
 
             if (sample->u.lapinfo.event_type == 0x00){
             }
+            // lap start
             else if (sample->u.lapinfo.event_type == 0x1f && !mIncludeOnlyManualLaps){
                 lap = newLap(dateTime, QString::number(sample->u.lapinfo.duration/1000), QString::number(sample->u.lapinfo.distance));
                 mTagActivity.appendChild(lap);
             }
+            // lap pause
             else if (sample->u.lapinfo.event_type == 0x1e && !mIncludeOnlyManualLaps){
                 lap = newLap(dateTime, QString::number(sample->u.lapinfo.duration/1000), QString::number(sample->u.lapinfo.distance));
                 mTagActivity.appendChild(lap);
             }
+            // manual lap start
             else if (sample->u.lapinfo.event_type == 0x01){
                 isEmptyLap = (sample->u.lapinfo.distance == 0 && sample->u.lapinfo.duration == 0);
                 
                 lap = mDoc.createElement("Lap");
-                lap.setAttribute("StartTime", dateTime.toString(Qt::ISODate));
+                if (startTime != ""){
+                    lap.setAttribute("StartTime", startTime);
+                    lastStartTime = startTime;
+                }
+                else{
+                    lap.setAttribute("StartTime", lastStartTime);
+                }
                 mTagActivity.appendChild(lap);
     
                 if (!isEmptyLap){
@@ -248,14 +258,22 @@ void FormatTcx::build()
             }
         }
         else if (sample->type == ambit_log_sample_type_periodic){
-            if (gps_latitude == -1.0){
-                index++;
-                continue;
+            if (sample->utc_time.minute != 0xff) {
+                dateTime.setDate(QDate(sample->utc_time.year, sample->utc_time.month, sample->utc_time.day));
+                dateTime.setTime(QTime(sample->utc_time.hour, sample->utc_time.minute, 0).addMSecs(sample->utc_time.msec));
+                dateTime.setTimeSpec(Qt::UTC);
+            } else {
+                // non-gps activities: indoor training, etc
+                dateTime = QDateTime(
+                        QDate(mLogEntry->logEntry->header.date_time.year,
+                            mLogEntry->logEntry->header.date_time.month,
+                            mLogEntry->logEntry->header.date_time.day),
+                        QTime(mLogEntry->logEntry->header.date_time.hour,
+                            mLogEntry->logEntry->header.date_time.minute, 0).addMSecs(mLogEntry->logEntry->header.date_time.msec));
+                QTime q_time = QTime::fromMSecsSinceStartOfDay(sample->time);
+                dateTime = dateTime.addMSecs(q_time.msecsSinceStartOfDay());
             }
-            dateTime.setDate(QDate(sample->utc_time.year, sample->utc_time.month, sample->utc_time.day));
-            dateTime.setTime(QTime(sample->utc_time.hour, sample->utc_time.minute, 0).addMSecs(sample->utc_time.msec));
-            dateTime.setTimeSpec(Qt::UTC);
-
+            lastStartTime = dateTime.toString(Qt::ISODate);
             trackPoint = mDoc.createElement("Trackpoint");
             mTrack.appendChild(trackPoint);
 
@@ -263,18 +281,22 @@ void FormatTcx::build()
             tagText = mDoc.createTextNode(dateTime.toString(Qt::ISODate));
             tag.appendChild(tagText);
             trackPoint.appendChild(tag);
-            
-            tag = mDoc.createElement("Position");
-            trackPoint.appendChild(tag);
-            subTag = mDoc.createElement("LatitudeDegrees");
-            tagText = mDoc.createTextNode(QString::number(gps_latitude, 'f', 8));
-            subTag.appendChild(tagText);
-            tag.appendChild(subTag);
-            
-            subTag = mDoc.createElement("LongitudeDegrees");
-            tagText = mDoc.createTextNode(QString::number(gps_longitude, 'f', 8));
-            subTag.appendChild(tagText);
-            tag.appendChild(subTag);
+
+            if (gps_latitude != -1.0){
+                index++;
+
+                tag = mDoc.createElement("Position");
+                trackPoint.appendChild(tag);
+                subTag = mDoc.createElement("LatitudeDegrees");
+                tagText = mDoc.createTextNode(QString::number(gps_latitude, 'f', 8));
+                subTag.appendChild(tagText);
+                tag.appendChild(subTag);
+
+                subTag = mDoc.createElement("LongitudeDegrees");
+                tagText = mDoc.createTextNode(QString::number(gps_longitude, 'f', 8));
+                subTag.appendChild(tagText);
+                tag.appendChild(subTag);
+            }
 
             tag = mDoc.createElement("Extensions");
             tpxTag = mDoc.createElement("TPX");
